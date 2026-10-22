@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò Chơi Toán Học Lớp 2 - Phạm Vi 20</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f6d365, #fda085);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+        .game-card {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            position: relative;
+        }
+        h1 {
+            color: #ff6b6b;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .score-board {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .question-box {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 2px dashed #cbd5e1;
+            animation: popIn 0.3s ease;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .option-btn {
+            background: #48dbfb;
+            color: #2f3542;
+            border: none;
+            padding: 15px 10px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .option-btn:active {
+            transform: scale(0.96);
+        }
+        .option-btn.btn-correct {
+            background: #2ed573 !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(46, 213, 115, 0.4);
+        }
+        .option-btn.btn-wrong {
+            background: #ff4757 !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
+        }
+        .message {
+            margin-top: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            min-height: 25px;
+        }
+        .correct { color: #2ed573; }
+        .wrong { color: #ff4757; }
+        
+        .sound-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #f1f2f6;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: #2f3542;
+        }
+
+        .restart-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.4);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-card">
+        <button class="sound-toggle" id="soundBtn" onclick="toggleSound()">🔔 Âm thanh: Bật</button>
+        <h1>Toán Vui Lớp 2 🧮</h1>
+        <div class="score-board">Điểm: <span id="score">0</span> | Câu: <span id="round">1</span>/10</div>
+        
+        <div class="question-box" id="question">Đang tải...</div>
+        
+        <div class="options-grid" id="optionsContainer"></div>
+        
+        <div class="message" id="message"></div>
+        <button class="restart-btn" id="restartBtn" style="display:none;" onclick="restartGame()">Chơi Lại Từ Đầu</button>
+    </div>
+
+    <script>
+        let score = 0;
+        let currentQuestion = 1;
+        const totalQuestions = 10;
+        let correctAnswer = 0;
+        let soundOn = true;
+        let canClick = true;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!soundOn) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'correct') {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(659.25, now);
+                osc.frequency.setValueAtTime(783.99, now + 0.1);
+                osc.frequency.setValueAtTime(1046.50, now + 0.2);
+                
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } else if (type === 'wrong') {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.setValueAtTime(120, now + 0.12);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        function toggleSound() {
+            soundOn = !soundOn;
+            document.getElementById('soundBtn').innerText = soundOn ? "🔔 Âm thanh: Bật" : "🔕 Âm thanh: Tắt";
+        }
+
+        function generateQuestion() {
+            canClick = true;
+            if (currentQuestion > totalQuestions) {
+                document.getElementById('question').innerText = "🏆 HOÀN THÀNH!";
+                document.getElementById('optionsContainer').innerHTML = '';
+                document.getElementById('restartBtn').style.display = 'block';
+                
+                let msg = document.getElementById('message');
+                msg.innerHTML = `Bé đạt được <b>${score}</b> / 10 điểm!<br>Xuất sắc quá! 🎉`;
+                msg.className = "message correct";
+                return;
+            }
+
+            // Sinh phép toán trong PHẠM VI 20
+            let num1 = Math.floor(Math.random() * 11) + 5;
+            let num2 = Math.floor(Math.random() * 10) + 1;
+            let ops = ['+', '-'];
+            let op = ops[Math.floor(Math.random() * ops.length)];
+
+            if (op === '-') {
+                if (num1 < num2) {
+                    let temp = num1;
+                    num1 = num2;
+                    num2 = temp;
+                }
+                correctAnswer = num1 - num2;
+            } else {
+                if (num1 + num2 > 20) {
+                    num1 = Math.floor(Math.random() * 10) + 1;
+                    num2 = Math.floor(Math.random() * 10) + 1;
+                }
+                correctAnswer = num1 + num2;
+            }
+
+            document.getElementById('question').innerText = `${num1} ${op} ${num2} = ?`;
+            document.getElementById('message').innerText = '';
+            document.getElementById('round').innerText = currentQuestion;
+            document.getElementById('score').innerText = score;
+
+            // Tạo 4 đáp án A, B, C, D ngẫu nhiên
+            let options = [correctAnswer];
+            while (options.length < 4) {
+                let wrongOpt = correctAnswer + (Math.floor(Math.random() * 7) - 3);
+                if (wrongOpt >= 0 && wrongOpt <= 20 && !options.includes(wrongOpt)) {
+                    options.push(wrongOpt);
+                }
+            }
+            options.sort(() => Math.random() - 0.5);
+
+            let labels = ['A', 'B', 'C', 'D'];
+            let container = document.getElementById('optionsContainer');
+            container.innerHTML = '';
+
+            options.forEach((opt, idx) => {
+                let btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = `${labels[idx]}. ${opt}`;
+                btn.setAttribute('data-value', opt);
+                btn.onclick = function() { checkChoice(btn, opt); };
+                container.appendChild(btn);
+            });
+        }
+
+        function checkChoice(selectedBtn, chosenValue) {
+            if (!canClick) return;
+
+            let msg = document.getElementById('message');
+            let allBtns = document.querySelectorAll('.option-btn');
+
+            if (chosenValue === correctAnswer) {
+                // ĐÚNG: Nút hóa XANH, ting ting, sang câu tiếp theo
+                canClick = false;
+                selectedBtn.classList.add('btn-correct');
+                score += 1;
+                document.getElementById('score').innerText = score;
+                msg.innerText = "Chính xác! Giỏi quá! 🎉";
+                msg.className = "message correct";
+                playSound('correct');
+
+                currentQuestion++;
+                setTimeout(generateQuestion, 1200);
+            } else {
+                // SAI: Nút bấm hóa ĐỎ, sáng nút ĐÚNG màu XANH, sau đó tự động ĐỔI PHÉP TÍNH KHÁC
+                canClick = false;
+                selectedBtn.classList.add('btn-wrong');
+                
+                allBtns.forEach(btn => {
+                    if (parseInt(btn.getAttribute('data-value')) === correctAnswer) {
+                        btn.classList.add('btn-correct');
+                    }
+                });
+
+                msg.innerText = `Chưa đúng! Đáp án là ${correctAnswer}. Đổi câu mới nhé! 💪`;
+                msg.className = "message wrong";
+                playSound('wrong');
+
+                // Sau 1.5 giây, tự động chuyển sang câu hỏi hoàn toàn mới (không lặp lại phép tính cũ)
+                setTimeout(() => {
+                    generateQuestion();
+                }, 1500);
+            }
+        }
+
+        function restartGame() {
+            score = 0;
+            currentQuestion = 1;
+            document.getElementById('restartBtn').style.display = 'none';
+            generateQuestion();
+        }
+
+        generateQuestion();
+    </script>
+
+</body>
+</html>
